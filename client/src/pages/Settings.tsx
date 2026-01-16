@@ -11,7 +11,7 @@ function formatDateInput(value: string) {
 }
 
 function onlyLetters(input: string) {
-  return input.replace(/[^А-Яа-яA-Za-z\s\-]/g, "");
+  return input.replace(/[^А-Яа-яA-Za-z\s\-]/g, "").toUpperCase();
 }
 
 function onlyDigits(input: string, max = 12) {
