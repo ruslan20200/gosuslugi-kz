@@ -104,3 +104,9 @@ temp/
 *.db
 *.sqlite
 *.sqlite3
+
+# Local scratch / reference materials (не часть приложения)
+/referens/
+/output/
+/kaspi-index.css
+.claude/

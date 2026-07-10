@@ -1,47 +1,57 @@
-import { Home, MessageSquare, Settings, QrCode } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { bottomNavItems } from "@/shared/navigation/bottomNavItems";
+import { APP_ROUTES } from "@/shared/config/routes";
 
 export default function BottomNav() {
   const [location] = useLocation();
-
-  const navItems = [
-    { icon: Home, label: "Главная", path: "/" },
-    { icon: QrCode, label: "Kaspi QR", path: "/qr" },
-    { icon: MessageSquare, label: "Сообщения", path: "/messages" },
-    { icon: Settings, label: "Настройки", path: "/settings" },
-  ];
+  /* Госуслуги открываются с Главной — таб «Главная» остаётся активным (как в Kaspi) */
+  const homeRoutes = new Set<string>([
+    APP_ROUTES.home,
+    APP_ROUTES.govServices,
+    APP_ROUTES.digitalDocuments,
+  ]);
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
-      <div className="w-full max-w-[430px] bg-white border-t border-gray-200 pb-safe pointer-events-auto">
-        <div className="flex justify-around items-center h-16">
-          {navItems.map((item) => {
-            const isActive = location === item.path;
+      <div
+        className="w-full max-w-[430px] bg-white/95 border-t border-gray-200 pointer-events-auto backdrop-blur"
+        style={{ paddingBottom: "max(0px, env(safe-area-inset-bottom))" }}
+      >
+        <nav className="flex h-16 items-center justify-around" aria-label="Нижняя навигация">
+          {bottomNavItems.map((item) => {
+            const isActive =
+              location === item.path ||
+              (item.path === APP_ROUTES.home && homeRoutes.has(location));
             return (
-              <Link key={item.path} href={item.path}>
-                <div className="flex flex-col items-center justify-center w-full h-full space-y-1 cursor-pointer">
-                  <item.icon 
-                    size={24} 
+              <Link
+                key={item.path}
+                href={item.path}
+                className="flex h-full min-w-[78px] flex-col items-center justify-center gap-1 rounded-xl px-2 active:bg-[#F7F7F8]"
+                aria-current={isActive ? "page" : undefined}
+              >
+                <span className="flex flex-col items-center justify-center gap-1">
+                  <item.icon
+                    size={25}
                     className={cn(
                       "transition-colors",
-                      isActive ? "text-[#D93025]" : "text-gray-400"
-                    )} 
-                    strokeWidth={isActive ? 2.5 : 2}
+                      isActive ? "text-kaspi-red" : "text-[#5F5F66]"
+                    )}
+                    strokeWidth={isActive ? 1.9 : 1.6}
                   />
-                  <span 
+                  <span
                     className={cn(
-                      "text-[10px] font-medium",
-                      isActive ? "text-[#D93025]" : "text-gray-400"
+                      "text-[10px] font-medium leading-none",
+                      isActive ? "text-kaspi-red" : "text-[#5F5F66]"
                     )}
                   >
                     {item.label}
                   </span>
-                </div>
+                </span>
               </Link>
             );
           })}
-        </div>
+        </nav>
       </div>
     </div>
   );

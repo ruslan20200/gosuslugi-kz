@@ -1,7 +1,37 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
 @import "tw-animate-css";
 
+@source "../index.html";
+@source "./main.tsx";
+@source "./App.tsx";
+@source "./pages/**/*.{ts,tsx}";
+@source "./features/**/*.{ts,tsx}";
+@source "./components/MobileLayout.tsx";
+@source "./components/BottomNav.tsx";
+@source "./components/ErrorBoundary.tsx";
+@source "./components/ui/button.tsx";
+@source "./components/ui/card.tsx";
+@source "./components/ui/sonner.tsx";
+@source "./components/ui/tooltip.tsx";
+@source "./contexts/**/*.tsx";
+
 @custom-variant dark (&:is(.dark *));
+
+/* Шрифт данных документов — Tahoma, вшита в сборку (woff2),
+   поэтому одинаково рендерится на любом устройстве и на Netlify.
+   Грузится только на страницах, где реально используется. */
+@font-face {
+  font-family: "UdoDoc";
+  src: url("/pdfjs-fonts/tahoma.woff2") format("woff2");
+  font-weight: 400 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "UdoDoc";
+  src: url("/pdfjs-fonts/tahomabd.woff2") format("woff2");
+  font-weight: 700 900;
+  font-display: swap;
+}
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -40,11 +70,26 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-kaspi-red: var(--kaspi-red);
+  --color-kaspi-red-press: var(--kaspi-red-press);
+  --color-kaspi-text: var(--kaspi-text);
+  --color-kaspi-text-secondary: var(--kaspi-text-secondary);
+  --color-kaspi-text-muted: var(--kaspi-text-muted);
+  --color-kaspi-surface: var(--kaspi-surface);
+  --color-kaspi-yellow: var(--kaspi-yellow);
 }
 
 :root {
-  /* iOS System Colors & Custom Palette */
-  --primary: #D93025; /* Red for main icons */
+  /* Kaspi.kz brand palette (taken from kaspi.kz CSS) */
+  --kaspi-red: #F14635;
+  --kaspi-red-press: #D93A2B;
+  --kaspi-text: #1F1F1F;
+  --kaspi-text-secondary: #4A4A4A;
+  --kaspi-text-muted: #A8A8A8;
+  --kaspi-surface: #F5F5F5;
+  --kaspi-yellow: #F8DA1C;
+
+  --primary: var(--kaspi-red); /* Red for main icons */
   --primary-foreground: #FFFFFF;
   --blue-action: #007AFF; /* iOS Blue for buttons */
   
@@ -114,12 +159,31 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    min-height: 100dvh;
   }
   body {
     @apply bg-white text-foreground;
+    font-family: Roboto, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Arial, "Noto Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overscroll-behavior-y: none;
   }
   html, #root {
     background-color: white;
+  }
+  @supports (height: 100dvh) {
+    .h-screen {
+      height: 100dvh;
+    }
+    .min-h-screen {
+      min-height: 100dvh;
+    }
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -131,6 +195,50 @@
   input[type="checkbox"]:not(:disabled),
   input[type="radio"]:not(:disabled) {
     @apply cursor-pointer;
+  }
+}
+
+@layer utilities {
+  .kaspi-scrollbar-none {
+    scrollbar-width: none;
+  }
+
+  .kaspi-scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  .animate-kaspi-shake {
+    animation: kaspi-shake 0.4s ease-in-out;
+  }
+}
+
+@keyframes kaspi-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-9px);
+  }
+  40% {
+    transform: translateX(8px);
+  }
+  60% {
+    transform: translateX(-6px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

@@ -1,207 +1,323 @@
 import MobileLayout from "@/components/MobileLayout";
-import { useUserData } from "@/hooks/useUserData";
-import { ChevronRight, Trash2, Upload } from "lucide-react";
+import { getStoredAccessCode } from "@/features/access-code/accessCodeStorage";
+import { HowToUseCard } from "@/features/settings/components/HowToUseCard";
+import { SettingsCollapsible } from "@/features/settings/components/SettingsCollapsible";
+import { SettingsInput } from "@/features/settings/components/SettingsInput";
+import { SettingsSection } from "@/features/settings/components/SettingsSection";
+import { SettingsSelect } from "@/features/settings/components/SettingsSelect";
+import {
+  formatDateInput,
+  normalizeDoc,
+  onlyDigits,
+  onlyLetters,
+} from "@/features/settings/lib/inputFormatters";
+import { optimizePhoto } from "@/features/settings/lib/optimizePhoto";
+import {
+  addYears,
+  DOCUMENT_VALIDITY_YEARS,
+  EDUCATION_COURSES,
+  EDUCATION_GROUPS,
+  formatEducationGroup,
+  formatShortName,
+  iinPrefixFromBirthDate,
+  randomDocNumber,
+  randomIinTail,
+  useUserData,
+} from "@/hooks/useUserData";
+import { APP_ROUTES } from "@/shared/config/routes";
+import {
+  Camera,
+  ChevronLeft,
+  ChevronRight,
+  Dices,
+  LockKeyhole,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 import { Link } from "wouter";
 import React from "react";
 
-function formatDateInput(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 8);
-  const parts = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean);
-  return parts.join(".");
-}
-
-function onlyLetters(input: string) {
-  return input.replace(/[^А-Яа-яA-Za-z\s\-]/g, "").toUpperCase();
-}
-
-function onlyDigits(input: string, max = 12) {
-  return input.replace(/\D/g, "").slice(0, max);
-}
-
-function normalizeDoc(input: string) {
-  return input.replace(/[^A-Za-z0-9]/g, "").slice(0, 20).toUpperCase();
-}
-
 export default function Settings() {
   const { data, update, reset } = useUserData();
+  const hasAccessCode = Boolean(getStoredAccessCode());
+  /* Первые 6 цифр ИИН = дата рождения; пользователь задаёт только последние 6 */
+  const iinPrefix = iinPrefixFromBirthDate(data.birthDate);
+  const iinTail = data.iin.slice(6);
 
-  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result as string;
-      if (file.type.includes("image")) {
+    if (!file.type.includes("image")) return;
+
+    try {
+      const optimized = await optimizePhoto(file);
+      update({ photo: optimized, pdf: undefined });
+    } catch {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
         update({ photo: result, pdf: undefined });
-      }
-    };
-    reader.readAsDataURL(file);
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      e.target.value = "";
+    }
   };
 
   return (
-    <MobileLayout className="bg-white">
-      <header className="sticky top-0 left-0 right-0 z-20 bg-white flex items-center h-14 px-2">
-        <Link href="/">
-          <button className="p-2 -ml-1 flex items-center text-[#000000]">
-            <ChevronRight className="rotate-180 w-6 h-6" />
+    <MobileLayout className="bg-kaspi-surface">
+      <header className="sticky top-0 left-0 right-0 z-20 flex h-12 items-center bg-white px-2">
+        <Link href={APP_ROUTES.services}>
+          <button className="grid h-11 w-11 place-items-center rounded-xl active:bg-gray-100" aria-label="Назад">
+            <ChevronLeft size={26} strokeWidth={1.8} />
           </button>
         </Link>
-        <h1 className="flex-1 text-center font-semibold text-[17px] pr-8">Настройки</h1>
+        <h1 className="flex-1 pr-11 text-center text-[17px] font-bold text-kaspi-text">Настройки</h1>
       </header>
 
-      <div className="flex-1 overflow-y-auto bg-white px-4 pb-6">
-        <div className="pt-3 pb-4">
-          <h2 className="text-lg font-semibold">Мои данные</h2>
-          <div className="text-sm text-gray-500 space-y-1">
-            <p>Заполните и сохраните — данные используются в удостоверении.</p>
-            <ul className="list-disc pl-5 space-y-0.5">
-              <li>⚠️ Важно: первые 6 цифр ИИН — это дата рождения в формате <b>ГГММДД</b>.</li>
-              <li>✅ Пример: <b>070918</b> → год <b>07</b>, месяц <b>09</b>, день <b>18</b> → дата рождения <b>18.09.2007</b>.</li>
-              <li>🔎 Если ИИН и дата рождения не совпадают — в документе будет неправильно.</li>
-            </ul>
+      <div
+        className="flex-1 overflow-y-auto overscroll-contain px-4 pb-8"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
+        {/* Инструкция — как пользоваться сайтом */}
+        <HowToUseCard />
+
+        {/* Профиль */}
+        <div className="mt-4 flex items-center gap-4 rounded-2xl bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+          <div className="relative grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full border border-[#E3E3E8] bg-kaspi-surface text-[#B0B0B6]">
+            {data.photo ? (
+              <img src={data.photo} alt="Фото профиля" className="h-full w-full object-cover" />
+            ) : (
+              <UserRound size={40} strokeWidth={1.3} />
+            )}
           </div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[18px] font-semibold text-kaspi-text">{formatShortName(data)}</div>
+            <div className="truncate text-[13px] text-kaspi-text-muted">ИИН {data.iin || "не указан"}</div>
+          </div>
+          <label className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-full bg-kaspi-surface text-kaspi-text-secondary active:bg-[#ECECEF]" aria-label="Загрузить фото">
+            <Camera size={22} strokeWidth={1.6} />
+            <input type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
+          </label>
         </div>
 
-        <div className="space-y-4">
-          <Section title="ФИО">
-            <Input
+        {/* Безопасность */}
+        <div className="mt-4 rounded-2xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+          <Link href={`${APP_ROUTES.accessCode}?mode=change`}>
+            <button className="flex min-h-[64px] w-full items-center gap-4 rounded-2xl px-4 text-left active:bg-[#F7F7F8]">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#FEECEA] text-kaspi-red">
+                <LockKeyhole size={21} strokeWidth={1.6} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[16px] text-kaspi-text">
+                  {hasAccessCode ? "Сменить код доступа" : "Установить код доступа"}
+                </span>
+                <span className="block text-[13px] text-kaspi-text-muted">
+                  Код запрашивается при входе в Госуслуги
+                </span>
+              </span>
+              <ChevronRight className="shrink-0 text-[#C6C6CB]" size={22} strokeWidth={1.8} />
+            </button>
+          </Link>
+        </div>
+
+        <div className="mt-4 space-y-4">
+          {/* Основные данные — то, что нужно почти всем, всегда на виду */}
+          <SettingsSection title="Основные данные">
+            <SettingsInput
               label="Фамилия"
               value={data.lastName}
               onChange={(v) => update({ lastName: onlyLetters(v) })}
               placeholder="Например Иванов"
             />
-            <Input
+            <SettingsInput
               label="Имя"
               value={data.firstName}
               onChange={(v) => update({ firstName: onlyLetters(v) })}
               placeholder="Например Иван"
             />
-            <Input
+            <SettingsInput
               label="Отчество"
               value={data.middleName}
               onChange={(v) => update({ middleName: onlyLetters(v) })}
               placeholder="Например Иванович"
             />
-          </Section>
-
-          <Section title="Документ">
-            <Input
-              label="ИИН"
-              value={data.iin}
-              onChange={(v) => update({ iin: onlyDigits(v, 12) })}
-              placeholder="Например 990101123456"
-              inputMode="numeric"
-            />
-            <Input
-              label="Номер документа"
-              value={data.docNumber}
-              onChange={(v) => update({ docNumber: normalizeDoc(v) })}
-              placeholder="Например 123456789"
-            />
-            <Input
+            <SettingsInput
               label="Дата рождения"
               value={data.birthDate}
-              onChange={(v) => update({ birthDate: formatDateInput(v) })}
+              onChange={(v) => {
+                const birthDate = formatDateInput(v);
+                /* Первые 6 цифр ИИН пересобираем из даты, хвост сохраняем */
+                const prefix = iinPrefixFromBirthDate(birthDate);
+                update(prefix ? { birthDate, iin: prefix + iinTail } : { birthDate });
+              }}
               placeholder="ДД.ММ.ГГГГ"
               inputMode="numeric"
             />
-            <Input
+            <SettingsSelect
+              label="Пол"
+              value={data.gender}
+              onChange={(v) => update({ gender: v as "М" | "Ж" })}
+              options={[
+                { value: "М", label: "Мужской (М)" },
+                { value: "Ж", label: "Женский (Ж)" },
+              ]}
+            />
+
+            {/* ИИН: первые 6 цифр — из даты рождения, остальные 6 вводятся или 🎲 */}
+            <div className="block space-y-1">
+              <span className="text-[13px] text-kaspi-text-muted">ИИН</span>
+              <div className="flex items-center gap-2">
+                <div className="flex flex-1 items-center rounded-xl bg-kaspi-surface px-3 py-2.5 text-[15px] font-medium tracking-wide text-kaspi-text focus-within:bg-white focus-within:ring-1 focus-within:ring-kaspi-red">
+                  <span className="text-kaspi-text-muted">{iinPrefix || "??????"}</span>
+                  <input
+                    value={iinTail}
+                    onChange={(e) =>
+                      update({ iin: iinPrefix + onlyDigits(e.target.value, 6) })
+                    }
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="000000"
+                    className="ml-1 w-full bg-transparent outline-none placeholder:text-kaspi-text-muted"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    update({ iin: iinPrefix + randomIinTail(data.birthDate, data.gender) })
+                  }
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-kaspi-surface text-kaspi-text-secondary active:bg-[#ECECEF]"
+                  aria-label="Сгенерировать случайные цифры"
+                >
+                  <Dices size={20} strokeWidth={1.7} />
+                </button>
+              </div>
+              <span className="text-[12px] text-kaspi-text-muted">
+                Первые 6 цифр — дата рождения. Остальные впишите или нажмите{" "}
+                <Dices size={12} strokeWidth={2} className="inline align-[-1px]" />
+              </span>
+            </div>
+          </SettingsSection>
+
+          {/* Дополнительно — меняется редко, поэтому свёрнуто */}
+          <SettingsCollapsible
+            title="Данные документа"
+            hint="Номер, даты, место рождения — обычно менять не нужно"
+          >
+            {/* Номер документа: ввод или случайный (🎲) */}
+            <div className="block space-y-1">
+              <span className="text-[13px] text-kaspi-text-muted">Номер документа</span>
+              <div className="flex items-center gap-2">
+                <input
+                  value={data.docNumber}
+                  onChange={(e) => update({ docNumber: normalizeDoc(e.target.value) })}
+                  placeholder="Например 123456789"
+                  inputMode="numeric"
+                  className="w-full flex-1 rounded-xl border border-transparent bg-kaspi-surface px-3 py-2.5 text-[15px] font-medium text-kaspi-text outline-none transition-colors placeholder:text-kaspi-text-muted focus:border-kaspi-red focus:bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => update({ docNumber: randomDocNumber() })}
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-kaspi-surface text-kaspi-text-secondary active:bg-[#ECECEF]"
+                  aria-label="Сгенерировать случайный номер"
+                >
+                  <Dices size={20} strokeWidth={1.7} />
+                </button>
+              </div>
+            </div>
+            <SettingsInput
               label="Дата выдачи"
               value={data.issueDate}
-              onChange={(v) => update({ issueDate: formatDateInput(v) })}
+              onChange={(v) => {
+                const issueDate = formatDateInput(v);
+                /* Срок действия считаем автоматически: дата выдачи + N лет */
+                const expiryDate = addYears(issueDate, DOCUMENT_VALIDITY_YEARS);
+                update(expiryDate ? { issueDate, expiryDate } : { issueDate });
+              }}
               placeholder="ДД.ММ.ГГГГ"
               inputMode="numeric"
             />
-            <Input
-              label="Срок действия"
-              value={data.expiryDate}
-              onChange={(v) => update({ expiryDate: formatDateInput(v) })}
-              placeholder="ДД.ММ.ГГГГ"
-              inputMode="numeric"
-            />
-            <Input
+
+            {/* Срок действия считается автоматически — только для чтения */}
+            <div className="block space-y-1">
+              <span className="text-[13px] text-kaspi-text-muted">Срок действия</span>
+              <div className="flex w-full items-center justify-between rounded-xl bg-kaspi-surface px-3 py-2.5 text-[15px] font-medium text-kaspi-text">
+                <span>{data.expiryDate || "—"}</span>
+                <span className="text-[12px] font-normal text-kaspi-text-muted">
+                  +{DOCUMENT_VALIDITY_YEARS} лет от выдачи
+                </span>
+              </div>
+            </div>
+            <SettingsInput
               label="Место рождения"
               value={data.birthPlace}
               onChange={(v) => update({ birthPlace: onlyLetters(v) })}
               placeholder="Например Алматы"
             />
-            <Input
+            <SettingsInput
               label="Национальность"
               value={data.nationality}
               onChange={(v) => update({ nationality: onlyLetters(v) })}
               placeholder="Казах"
             />
-          </Section>
+            <SettingsInput
+              label="Гражданство"
+              value={data.citizenship}
+              onChange={(v) => update({ citizenship: v.toUpperCase() })}
+              placeholder="Например КАЗАХСТАН"
+            />
+            <SettingsInput
+              label="Орган выдачи"
+              value={data.issuingAuthority}
+              onChange={(v) => update({ issuingAuthority: v.toUpperCase() })}
+              placeholder="Например МВД РК"
+            />
+          </SettingsCollapsible>
 
-          <Section title="Фото">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-14 aspect-3/4 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center text-sm text-gray-500">
-                  {data.photo ? (
-                    <img src={data.photo} alt="Фото" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-center leading-tight">
-                      Нет
-                      <br />
-                      фото
-                    </span>
-                  )}
-                </div>
-                <div className="text-sm text-gray-600">
-                  <div className="font-medium text-gray-900">Фото</div>
-                  <div className="text-xs text-gray-500">PNG/JPG</div>
-                </div>
-              </div>
-              <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-[#007AFF] text-white text-sm font-semibold cursor-pointer active:scale-[0.98] transition-transform">
-                <Upload size={18} />
-                Загрузить
-                <input type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
-              </label>
-            </div>
-          </Section>
-        </div>
-
-        <div className="mt-6 flex flex-col gap-3">
-          <button
-            onClick={reset}
-            className="w-full border-2 border-red-500 text-red-600 font-semibold py-3 rounded-2xl active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+          {/* Образование — отдельный редкий блок */}
+          <SettingsCollapsible
+            title="Образование"
+            hint="Группа, курс и источник документа"
           >
-            <Trash2 size={20} /> Очистить данные
-          </button>
+            <SettingsSelect
+              label="Группа"
+              value={data.educationGroup}
+              onChange={(v) => update({ educationGroup: v })}
+              options={EDUCATION_GROUPS}
+            />
+            <SettingsSelect
+              label="Курс"
+              value={data.educationCourse}
+              onChange={(v) => update({ educationCourse: v })}
+              options={EDUCATION_COURSES.map((c) => ({ value: c, label: `${c} курс` }))}
+            />
+            <div className="text-[13px] text-kaspi-text-muted">
+              В документе будет:{" "}
+              <b className="text-kaspi-text">
+                {formatEducationGroup(data.educationGroup, data.educationCourse)}
+              </b>
+            </div>
+            <SettingsSelect
+              label="Источник документа"
+              value={data.educationDocSource}
+              onChange={(v) =>
+                update({ educationDocSource: v as "builtin" | "upload" })
+              }
+              options={[
+                { value: "builtin", label: "Встроенный документ (данные из настроек)" },
+                { value: "upload", label: "Загрузить свой PDF" },
+              ]}
+            />
+          </SettingsCollapsible>
         </div>
+
+        <button
+          onClick={reset}
+          className="mt-6 flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl bg-white text-[16px] font-medium text-kaspi-red shadow-[0_1px_2px_rgba(0,0,0,0.04)] active:bg-[#FFF3F2]"
+        >
+          <Trash2 size={20} strokeWidth={1.7} /> Очистить данные
+        </button>
       </div>
     </MobileLayout>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
-      <h3 className="text-[15px] font-semibold text-gray-900">{title}</h3>
-      {children}
-    </div>
-  );
-}
-
-interface InputProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
-}
-
-function Input({ label, value, onChange, placeholder, inputMode }: InputProps) {
-  return (
-    <label className="block space-y-1">
-      <span className="text-[13px] text-gray-500">{label}</span>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        inputMode={inputMode}
-        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[15px] font-medium text-black outline-none focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/50"
-      />
-    </label>
   );
 }
