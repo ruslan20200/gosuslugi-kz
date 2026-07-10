@@ -109,7 +109,7 @@ function IdentityDocumentFront({
 
       <div className="absolute inset-0 p-4 flex flex-col">
         <div
-          className="absolute aspect-[3/4] bg-gray-200 overflow-hidden shadow-sm"
+          className="absolute aspect-[35/45] bg-gray-200 overflow-hidden shadow-sm"
           style={{
             left: `${POSITIONS.photo.left}px`,
             top: POSITIONS.photo.top,

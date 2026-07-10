@@ -70,7 +70,7 @@ async function renderFront(userData: UserData): Promise<string> {
 
   /* Фото */
   const pw = (POSITIONS.photo.width / 100) * W;
-  const ph = (pw * 4) / 3;
+  const ph = (pw * 45) / 35; // фото 35×45 мм (стандарт документа), как в реальном PDF
   const px = POSITIONS.photo.left;
   const py = PHOTO_TOP_RATIO * H - ph / 2;
   ctx.fillStyle = "#d2d5db";
